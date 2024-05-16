@@ -273,7 +273,7 @@ def get_services(update: Update, context):
 
 def get_repl(update: Update, context):
     reply = ''
-    filename = os.listdir("temp/db_logs/")[0]
+    filename = os.listdir("//temp/db_logs/")[0]
     log =  open("/temp/db_logs/"+filename, 'r').readlines()
     for i in log:
         if "repl" in i.lower():
