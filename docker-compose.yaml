@@ -42,7 +42,7 @@ services:
       - "5433:5432"
     command: |
       bash -c "
-      until echo $$DB_REPL_PASSWORD | pg_basebackup --pgdata=/var/lib/postgresql/data/ -R --username=$$DB_REPL_USER --host=$$DB_REPL_HOST --port=5432
+      until echo $$DB_REPL_PASSWORD | pg_basebackup --pgdata=/var/lib/postgresql/data/ -R --username=$$DB_REPL_USER --host=$$DB_HOST --port=5432
       do
         echo 'Waiting for primary to connect...'
         sleep 1s
