@@ -1,5 +1,20 @@
 [host_group]
-host01 ansible_host=192.168.137.136 ansible_user=ansible ansible_password=pt-deb
-host02 ansible_host=192.168.137.131 ansible_user=ansible ansible_password=pt-deb
+host01 ansible_host=192.168.137.129 ansible_user=ansible ansible_password=pt-deb
+host02 ansible_host=192.168.137.137 ansible_user=ansible ansible_password=pt-deb
 
+[host_group:vars]
+TOKEN=6871907310:AAFWMcO8AcFDA9L9Vv_x31iGGubRwedCWCo
+RM_HOST=192.168.137.129
+RM_PORT=22
+RM_USER=bu5y
+RM_PASSWORD=ubu
+DB_USER=postgres
+DB_PASSWORD=Qq12345
+DB_HOST=192.168.137.129
+DB_PORT=5432
+DB_DATABASE=db_telegram
+DB_REPL_USER=repl_user
+DB_REPL_PASSWORD=Qq12345
+DB_REPL_HOST=192.168.137.137
+DB_REPL_PORT=5432
 
