@@ -1,0 +1,135 @@
+- name: Set up bot
+  hosts: all    # playbook запустится для всех хостов в inventory.
+  become: yes   # команда позволяет ansible использовать права root.
+  vars:
+    db_repl_user: postgres
+    db_name: db_telegram
+    db_user: postgres
+    db_pass: Qq12345
+    repl_user: repl_user
+  tasks:        # ниже начинается список задач. Обратите внимание, tasks во множественном числе. Иначе получим ошибку при выполнении плейбука
+
+
+  - name: Update apt cache
+    ansible.builtin.apt:
+      update_cache: yes
+
+  - name: Install packages
+    ansible.builtin.apt:
+      name: ['python3', 'postgresql']
+      state: present
+
+  - name: Download project
+    ansible.builtin.git:
+      repo: 'https://github.com/Bu5y5leeper/PT_START_BOT.git'
+      dest: '/temp/pt_bot'
+      version: docker
+    delegate_to: host01
+    ignore_errors: true
+
+  - name: Pip install requirements
+    ansible.builtin.pip:
+      requirements: /temp/pt_bot/bot/requirements.txt
+      extra_args: "--break-system-packages"
+    delegate_to: host01
+
+  - name: Stop db
+    ansible.builtin.systemd:
+      name: postgresql
+      state: stopped
+
+  - name: Create MASTER_DB conf
+    ansible.builtin.template:
+      src: ./config-postgresql
+      dest: /etc/postgresql/15/main/postgresql.conf
+      owner: "{{ db_user }}"
+      group: "{{ db_user }}"
+      mode: 0644
+
+  - name: Create MASTER_DB pg_hba.conf
+    ansible.builtin.template:
+      src: ./pg_hba.conf
+      dest: /etc/postgresql/15/main/pg_hba.conf
+      owner: "{{ db_user }}"
+      group: "{{ db_user }}"
+      mode: 0644
+    delegate_to: host01
+
+  - name: Create log_dir
+    ansible.builtin.shell: |
+       mkdir -p /temp/db_logs/
+       mkdir -p /oracle
+       mkdir -p /oracle/pg_data
+       mkdir -p /oracle/pg_data/archive
+       chown "{{ db_user }}" -R /oracle
+    delegate_to: host01
+
+  - name: Start db
+    ansible.builtin.systemd:
+      name: postgresql
+      state: started
+    delegate_to: host01
+
+  - name: Create database
+    community.postgresql.postgresql_db:
+      name: "{{ db_name }}"
+      state: present
+    become_user: "{{ db_user }}"
+    delegate_to: host01
+
+  - name: Set password for the default PostgreSQL user
+    command: psql -c "ALTER USER postgres WITH PASSWORD '{{ postgres_password }}';"
+    become_user: "{{ db_user }}"
+    vars:
+      postgres_password: "{{ db_pass }}"
+    delegate_to: host01
+    ignore_errors: yes
+
+  - name: Init MASTER_DB
+    become_user: "{{ db_user }}"
+    command: psql -f /temp/pt_bot/db/init.sql -d "{{ db_name }}"
+    delegate_to: host01
+
+  - name: Clear SLAVE_DB
+    ansible.builtin.shell: |
+       rm -rf /var/lib/postgresql/15/main/*
+       mkdir -p /temp/db_logs
+       chown postgres:postgres -R /temp/db_logs
+    delegate_to: host02
+
+  - name: change of rights
+    command: chown -R postgres:postgres /var/lib/postgresql/
+   # command: chown -R postgres:postgres /run/lib/postgresql/
+    command: rm -rf /var/lib/postgresql/15/main/*
+    become_user: root
+
+  - name: Replicate DB
+    command: pg_basebackup -h 192.168.137.136 --pgdata=/var/lib/postgresql/15/main --port=5432 --username=repl_user -vR -X stream
+    become_user: postgres
+    environment:
+        PGPASSWORD: "{{ db_pass }}"
+    delegate_to: host02
+
+  - name: Start SLAVE_DB
+    ansible.builtin.systemd:
+      name: postgresql@15-main, postgresql
+      state: started
+    delegate_to: host02
+
+  - name: Create bot systemd unit file
+    ansible.builtin.shell: |
+      touch /etc/systemd/system/bot.service
+      chmod 0640 /etc/systemd/system/bot.service
+      echo "[Unit]\nDescription=pt_bot\nAfter=network.target\n[Service]\nUser=root\nWorkingDirectory=/\nExecStart=/usr/bin/python3 /temp/pt_bot/bot/bot.py\nRestart=always\nEnvironment='PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\n[Install]\nWantedBy=multi-user.target" > /etc/systemd/system/bot.service
+    delegate_to: host01
+
+  - name: Reload systemd to recognize the new service
+    ansible.builtin.systemd:
+      daemon_reload: yes
+    delegate_to: host01
+
+  - name: Start bot
+    ansible.builtin.systemd:
+      name: bot
+      state: started
+    delegate_to: host01

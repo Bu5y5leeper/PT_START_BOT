@@ -1,0 +1,5 @@
+[host_group]
+host01 ansible_host=192.168.137.136 ansible_user=ansible ansible_password=pt-deb
+host02 ansible_host=192.168.137.131 ansible_user=ansible ansible_password=pt-deb
+
+
