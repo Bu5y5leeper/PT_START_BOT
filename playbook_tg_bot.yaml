@@ -10,7 +10,7 @@
 
   - name: Install packages
     ansible.builtin.apt:
-      name: ['python3', 'postgresql-14', 'postgresql-contrib']
+      name: ['python3', 'postgresql-14', 'postgresql-contrib', 'pip']
       state: present
 
 - name: Set up master db
@@ -72,7 +72,7 @@
     loop:
       - /oracle/pg_data/
       - /temp/db_logs
-    
+
   - name: Change owner for run/postgres
     file:
       path: /run/postgresql
@@ -88,6 +88,10 @@
     command: psql -c "ALTER USER postgres WITH PASSWORD '{{ db_pass }}';"
     become_user: "{{ db_user }}"
     ignore_errors: yes
+
+  - name: Create MASTER_DB
+    become_user: "{{ db_user }}"
+    command: psql -c "CREATE DATABASE {{ db_name }};"
 
   - name: Init MASTER_DB
     become_user: "{{ db_user }}"
