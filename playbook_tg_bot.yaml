@@ -21,6 +21,7 @@
     db_name: "{{ DB_DATABASE }}"
     db_user: "{{ DB_USER }}"
     db_pass: "{{ DB_PASSWORD }}"
+    db_port: "{{ DB_PORT }}"
   tasks:
   - name: Download project
     ansible.builtin.git:
@@ -45,6 +46,14 @@
       owner: "{{ db_user }}"
       group: "{{ db_user }}"
       mode: 0644
+
+  - name: Edit MASTER_DB conf
+    ansible.builtin.lineinfile:
+        path: /etc/postgresql/14/main/postgresql.conf
+        regexp: 'port ='
+        line: 'port = {{ db_port }}'
+        backrefs: yes
+        state: present
 
   - name: Create MASTER_DB pg_hba.conf
     ansible.builtin.template:
@@ -92,12 +101,21 @@
     db_name: "{{ DB_DATA }}"
     db_user: "{{ DB_USER }}"
     db_pass: "{{ DB_PASSWORD }}"
+    db_repl_port: "{{ DB_REPL_PORT }}"
   tasks:
 
   - name: Stop db
     ansible.builtin.service:
       name: postgresql
       state: stopped
+
+  - name: Edit SLAVE_DB conf
+    ansible.builtin.lineinfile:
+        path: /etc/postgresql/14/main/postgresql.conf
+        regexp: 'port ='
+        line: 'port = {{ db_repl_port }}'
+        backrefs: yes
+        state: present
 
   - name: Create slave log directory
     file:
